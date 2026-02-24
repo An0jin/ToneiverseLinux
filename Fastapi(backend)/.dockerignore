@@ -1,0 +1,12 @@
+*
+!*.py
+!*.pt
+!*.onnx
+!*.md
+!.env
+!*.txt
+!.*
+!index.html
+!Dockerfile
+!uploads
+!uploads/**
