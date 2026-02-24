@@ -1,8 +1,47 @@
-# Virtual Environment
-venv/
+# --- 가상환경 (Virtual Environments) ---
+# 가상환경의 실행 파일, 라이브러리, 헤더 파일을 제외합니다.
+# 로컬 개발 환경의 환경변수 및 패키지 설치 경로를 관리합니다.
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
 .venv/
+venv/
+ENV/
 env/
 
-# Environment variables and keys
+# --- 파이썬 캐시 및 컴파일 파일 ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- 보안 및 환경 설정 (Security & Config) ---
+# [CRITICAL] 보안 키 파일 및 로컬 환경변수 파일
 .env
+*.env
 *.key
+*.pem
+cert.crt
+**/capstone.key
+
+# --- IDE 및 운영체제 관련 ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- 주피터 노트북 체크포인트 ---
+.ipynb_checkpoints/
+
+# --- 임시파일 및 로그 ---
+*.log
+*.tmp
+val_batch*.jpg
