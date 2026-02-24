@@ -1,0 +1,4 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+DL/personal_color/run/train/best.pt filter=lfs diff=lfs merge=lfs -text
+DL/personal_color/run/train/last.pt filter=lfs diff=lfs merge=lfs -text
