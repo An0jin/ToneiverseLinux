@@ -1,0 +1,12 @@
+# 1. path: 기본 루트 경로를 명확히 지정 (선택 사항이지만 권장)
+path: /home/an0jin/Documents/GitHub/WarmCoolYolo/personal_color/dataset
+
+# 2. train/val: 시스템 전체 경로(절대 경로)로 수정
+train:  ./train/images
+val: ./valid/images
+
+names:
+  0: 가을 웜톤
+  1: 봄 웜톤
+  2: 여름 쿨톤
+  3: 겨울 쿨톤
