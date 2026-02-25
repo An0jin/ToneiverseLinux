@@ -23,6 +23,21 @@
 - **Optimized Data Engineering**: Roboflow 및 OpenCV를 활용한 고효율 학습 데이터 파이프라인 구축.
 - **Production-Ready Validation**: Confusion Matrix 분석 등 검증된 성과 지표를 바탕으로 한 상용 수준의 모델링.
 
+### 3. Data Collection - Roboflow Automation
+
+학습 데이터의 다양성과 양을 확보하기 위해 **Roboflow Universe**의 방대한 데이터셋을 활용하였습니다.
+
+- **Automated Pipeline**: Roboflow API를 연동하여 `Personal Color`, `Facekind`, `Lipstick` 등 성격이 다른 다수의 데이터셋을 자동으로 다운로드하고 통합하는 스크립트 구현.
+- **Diverse Datasets**: 웜톤/쿨톤 분류 뿐만 아니라 얼굴형, 립스틱 발색 등 서비스에 필요한 다각도의 데이터를 수집.
+
+### 4. Image Data Preprocessing - Dataset Engineering
+
+수집된 이질적인 데이터셋들을 하나의 통일된 YOLO 학습 규격으로 정규화하는 전처리 과정을 거쳤습니다.
+
+- **Unified Integration**: 서로 다른 소스의 데이터를 하나의 `datasets` 폴더로 통합하고, 클래스 인덱스를 재정의하여 레이블 일관성 확보.
+- **Structure Optimization**: `images`와 `labels` 폴더 구조를 YOLO 표준에 맞춰 재배치하고, 데이터셋 간 중복 제거 및 클리닝 수행.
+- **Data Augmentation**: OpenCV를 활용한 이미지 리사이징 및 정규화를 통해 모델의 범용적 성능 최적화.
+
 ---
 
 ## 🚀 Key Achievements
@@ -34,9 +49,11 @@
 
 ## 🛠️ Technology Stack
 
-| 카테고리                       | 사용 기술 (Stack)                                                                                                                                                                                                                                                                                  |
-| :----------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Infrastructure**       | ![Xubuntu](https://img.shields.io/badge/-Xubuntu-2D2D2D?style=flat&logo=xubuntu&logoColor=white) ![Oracle Cloud](https://img.shields.io/badge/-Oracle%20Cloud-F80000?style=flat&logo=oracle&logoColor=white)                                                                                          |
-| **Programming Language** | ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat&logo=python&logoColor=white)                                                                                                                                                                                                        |
-| **Backend**              | ![FastAPI](https://img.shields.io/badge/-FastAPI-009688?style=flat&logo=fastapi&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?style=flat&logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/-Docker-2496ED?style=flat&logo=docker&logoColor=white) |
-| **AI & Deep Learning**   | ![YOLOv26](https://img.shields.io/badge/YOLOv26-OO--Architecture-blue) ![Gemini](https://img.shields.io/badge/-Gemini%20API-8E75B2?style=flat&logo=googlegemini&logoColor=white) ![OpenCV](https://img.shields.io/badge/-OpenCV-5C3EE8?style=flat&logo=opencv&logoColor=white)                           |
+| 카테고리                         | 사용 기술 (Stack)                                                                                                                                                                                                                                                                                            |
+| :------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **os**                     | ![xubuntu](https://img.shields.io/badge/-xubuntu-0044AA?style=flat&logo=xubuntu&logoColor=white)(로컬 백엔드)![Oracle Linux](https://img.shields.io/badge/-Oracle%20Linux-E95420?style=flat&logo=linux&logoColor=white)(클라우드)                                                                                |
+| **Programming Language**   | ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat&logo=python&logoColor=white)                                                                                                                                                                                                                  |
+| **Programming Collection** | ![Roboflow](https://img.shields.io/badge/-roboflow-6706CE?style=flat&logo=roboflow&logoColor=white)                                                                                                                                                                                                            |
+| **Programming Preprocessing**        | ![OpenCV](https://img.shields.io/badge/-OpenCV-5C3EE8?style=flat&logo=opencv&logoColor=white)![markdown](https://img.shields.io/badge/-markdown-000000?style=flat&logo=markdown&logoColor=white)![beautifulsoup](https://img.shields.io/badge/-beautifulsoup-005000?style=flat&logo=beautifulsoup&logoColor=white) |
+| **Backend**                | ![FastAPI](https://img.shields.io/badge/-FastAPI-009688?style=flat&logo=fastapi&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?style=flat&logo=postgresql&logoColor=white) ![Docker](https://img.shields.io/badge/-Docker-2496ED?style=flat&logo=docker&logoColor=white)           |
+| **AI & Deep Learning**     | ![YOLOv26](https://img.shields.io/badge/-YOLOv26-111F68?style=flat&logo=ultralytics&logoColor=white) ![Gemini](https://img.shields.io/badge/-Gemini%20API-8E75B2?style=flat&logo=googlegemini&logoColor=white)                                                                                                   |
