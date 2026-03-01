@@ -1,0 +1,37 @@
+services:
+  api:
+    image: an0jin/toneiverse
+    container_name: capstoneAPI
+    ports:
+      - "8000:8000"
+    restart: always
+    networks:
+      - Toneiverse
+  db:
+    image: postgres:16
+    container_name: DB
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: $PW
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - Toneiverse
+  npm:
+    image: "jc21/nginx-proxy-manager:latest"
+    container_name: npm
+    ports:
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
+      - "81:81" # 관리자 페이지
+    restart: always
+    volumes:
+      - ./data:/data # 설정 저장소 (계정, 도메인 규칙 등)
+      - ./letsencrypt:/etc/letsencrypt # SSL 인증서 저장소 (삭제 절대 금지)
+    networks:
+      - Toneiverse
+networks:
+  Toneiverse:
+    driver: bridge
