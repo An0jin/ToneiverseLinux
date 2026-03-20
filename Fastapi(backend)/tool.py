@@ -48,12 +48,12 @@ def hashpw(pw):
 
 class JWT:
     @staticmethod
-    def encode(email):
-        return jwt.encode({'email':email}, os.getenv("jwtSecret"), algorithm='HS256')
+    def encode(email,pw):
+        return jwt.encode({'email':email,'pw':pw}, os.getenv("jwtSecret"), algorithm='HS256')
     @staticmethod
     def decode(token):
         try:
-            return jwt.decode(token, os.getenv("jwtSecret"), algorithms=['HS256'])['email']
+            return jwt.decode(token, os.getenv("jwtSecret"), algorithms=['HS256'])
         except:
             return None
 class LLM(ABC):

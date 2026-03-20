@@ -43,7 +43,7 @@ async def login(login:Login=Form(...)):
             df=pd.read_sql('select email,name,hex_code,color_id,cname,year,sex from  v_user_lipstick where email=%s and pw=%s',conn,params=[login.email,hashpw(login.pw)])
             result=df.to_dict(orient="records")[0] if len(df)==1 else dict(zip(df.columns,[None]*len(df.columns)))
             result['msg']="성공"if  len(df)==1 else '이메일과 암호를 확인해주세요'
-            result['token']=JWT.encode(login.email)if  len(df)==1 else None
+            result['token']=JWT.encode(login.email,hashpw(login.pw))if  len(df)==1 else None
             return result
     except Exception as e:  
         return to_response(str(e))
@@ -84,14 +84,16 @@ def sync_processor(img_byte: bytes, token: str):
         response = json.loads(df_json)[0]
 
         try:
-            email = JWT.decode(token)
-            if not email:
+            data = JWT.decode(token)
+            email=data['email']
+            pw=data['pw']
+            if not data:
                 print("WARN: JWT 디코딩 성공, 그러나 이메일 정보 없음")
             else:
                 cursor = conn.cursor()
                 cursor.execute(
-                    'UPDATE "user" SET hex_code=%s WHERE email=%s', 
-                    (response['hex_code'], email)
+                    'UPDATE "user" SET hex_code=%s WHERE email=%s and pw=%s', 
+                    (response['hex_code'], email,pw)
                 )
                 conn.commit()
         except jwt.InvalidTokenError:
@@ -143,22 +145,23 @@ async def lipstick(color:str):
 async def llm_text(llm:Tllm=Form(None)):
     with connect() as conn:
         load_dotenv()
-        email=JWT.decode(llm.token)
+        data=JWT.decode(llm.token)
+        email=data['email']
+        pw=data['pw']
         colors=list(map(lambda x:x[0],pd.read_sql('''
         SELECT hex_code FROM lipstick 
 WHERE color_id = (
     SELECT T1.color_id 
     FROM "user" AS T0 
     INNER JOIN lipstick AS T1 ON T0.hex_code = T1.hex_code 
-    WHERE T0.email = %s
-)''',conn,params=[email,]).values))
+    WHERE T0.email = %s and T0.pw=%s
+)''',conn,params=[email,pw]).values))
         lllm=TextLLM()
-        
         response = lllm.invoke(llm.msg,colors,sex=llm.sex,year=llm.year)
         patten=r"#[A-Fa-f\d]{6}"
         color=re.findall(patten,response)[0]
         cursor=conn.cursor()
-        cursor.execute('update "user" set hex_code=%s where email=%s',(color,email))
+        cursor.execute('update "user" set hex_code=%s where email=%s and pw=%s',(color,email,pw))
         conn.commit()     
         result=pd.read_sql('SELECT hex_code,cname FROM lipstick WHERE hex_code = %s',conn,params=[color,])
         result=result.to_dict(orient="records")[0]

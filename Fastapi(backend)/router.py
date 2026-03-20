@@ -1,3 +1,5 @@
+from tool import to_response
+from sqlalchemy.engine import result
 from fastapi import APIRouter,Form
 from tool import *
 import pandas as pd
@@ -12,10 +14,12 @@ user = APIRouter(tags=['user'], prefix='/user')
 @user.get("/{token}")
 def get_user(token: str):
     try:
-        email=JWT.decode(token)
+        data=JWT.decode(token)
+        email=data['email']
+        pw=data['pw']
         print("이메일 : ",email)
         with connect() as conn:
-            df=pd.read_sql('select * from v_user_lipstick where email=%s',conn,params=[email,])
+            df=pd.read_sql('select * from v_user_lipstick where email=%s and pw=%s',conn,params=[email,pw])
         print("df : ",df)
         df['token']=token
         return df.to_dict(orient="records")[0]
@@ -34,7 +38,8 @@ def get_chat(color: str):
 @chat.post("")
 def post_chat(chat:Chat=Form(...)):
     try:
-        email=JWT.decode(chat.token)
+        data=JWT.decode(chat.token)
+        email=data['email']
         print("이메일 : ",email)
 
         print("메시지 : ",chat.msg)
@@ -52,7 +57,7 @@ def post_user(user:User=Form(...)):
     response={}
     try:
         user.email=user.email.lower()
-        response["token"]=JWT.encode(user.email)
+        response["token"]=JWT.encode(user.email,hashpw(user.pw))
         with connect() as conn:
             cursor=conn.cursor()
             try:
@@ -94,15 +99,20 @@ def put_user(update:Update):
     try:
         with connect()as conn:
             cursor=conn.cursor()
+            data=JWT.decode(update.token)
+            email=data['email']
+            pw=data['pw']
             try:
                 if update.pw:
-                    cursor.execute('UPDATE "user" SET pw=%s, name=%s, sex=%s, year=%s WHERE email=%s',
-                                (hashpw(update.pw), update.name, update.sex, update.year, JWT.decode(update.token)))
+                    cursor.execute('UPDATE "user" SET pw=%s, name=%s, sex=%s, year=%s WHERE email=%s and pw=%s',
+                                (hashpw(update.pw), update.name, update.sex, update.year, email,pw))
                 else:
-                    cursor.execute('UPDATE "user" SET sex=%s, year=%s WHERE email=%s',
-                                (update.sex, update.year, JWT.decode(update.token)))
+                    cursor.execute('UPDATE "user" SET sex=%s, year=%s WHERE email=%s and pw=%s',
+                                (update.sex, update.year, email,pw))
                 conn.commit()
-                return to_response("수정 완료")
+                result=to_response("수정 완료")
+                result['token']=JWT.encode(email,hashpw(update.pw) if update.pw else pw)
+                return result
             except Exception as e:
                 return to_response(f"Error : {e}")
     except Exception as e:
@@ -111,11 +121,13 @@ def put_user(update:Update):
 @user.put("/lipstick")
 def put_user_lipstick(lipstick:Lipstick):
     try:
-        email=JWT.decode(lipstick.token)
+        data=JWT.decode(lipstick.token)
+        email=data['email']
+        pw=data['pw']
         with connect()as conn:
             cursor=conn.cursor()
             try:
-                cursor.execute('update "user" set hex_code=%s where email=%s',(lipstick.hex_code,email))
+                cursor.execute('update "user" set hex_code=%s where email=%s and pw=%s',(lipstick.hex_code,email,pw))
                 conn.commit()
                 return to_response("수정 완료")
             except Exception as e:
@@ -127,12 +139,14 @@ def put_user_lipstick(lipstick:Lipstick):
 @user.delete("/{token}")
 def delete_user(token:str):
     try:
-        email=JWT.decode(token)
+        data=JWT.decode(token)
+        email=data['email']
+        pw=data['pw']
         with connect()as conn:
             cursor=conn.cursor()
             try:
-                cursor.execute('delete  from chat where email=%s; delete  from "user" where email=%s;',
-                               (email, email))
+                cursor.execute('delete  from chat where email=%s; delete  from "user" where email=%s and pw=%s;',
+                               (email, email,pw))
                 conn.commit()
                 result="" if cursor.rowcount>0 else "존재하지 않는 이메일입니다"
                 return to_response(result)
