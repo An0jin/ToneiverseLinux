@@ -1,4 +1,4 @@
-path : /home/an0jin/Documents/GitHub/WarmCoolYolo/lipstick/dataset
+path : /home/an0jin/Documents/GitHub/ToneiverseLinux/Yolo(DL)/lipstick/dataset
 
 train: train/images
 val: valid/images
