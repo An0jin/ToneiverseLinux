@@ -1,19 +1,20 @@
 import torch.nn as nn
-from torchvision import models
+import timm
 
 class Model(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, model='tf_efficientnetv2_s.in21k_ft_in1k'):
         super(Model, self).__init__()
-        self.model = models.efficientnet_v2_s(weights='DEFAULT')
+        self._num_classes=num_classes
+        self.model = timm.create_model(model, pretrained=True,num_classes=num_classes)
         
-        #Backbone 가중치 고정
         for param in self.model.parameters():
             param.requires_grad = False
-
-        in_features = self.model.classifier[-1].in_features
-        self.model.classifier[-1] = nn.Linear(in_features, num_classes)
-        self.head = self.model.classifier[-1]
-
+        for param in self.model.get_classifier().parameters():
+            param.requires_grad = True
+        self.head=self.model.get_classifier()
+    @property
+    def num_classes(self):
+        return self._num_classes
     #오버라이딩
     def forward(self, x):
         return self.model(x)
