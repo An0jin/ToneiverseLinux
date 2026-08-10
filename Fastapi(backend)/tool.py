@@ -96,7 +96,7 @@ class CVLLM(LLM):
 
         # 5. Gemini 호출
         response = self.client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=[
                 types.Part.from_bytes(
                     data=final_image,
@@ -152,13 +152,16 @@ class TextLLM(LLM):
         """
 
         result = self.client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=text,
             config={
                 "tools": [{"google_search": {}}], # 실시간 검색 도구 활성화
                 "system_instruction": system_instruction
             }
         )
+        print("결과 : "+result.text)
+
+        print(dir(result))
         return self.rm_markdown(result.text)
 
 def SendEmail(email,subject,body):

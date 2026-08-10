@@ -21,6 +21,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+lib
 
 # --- 보안 및 환경 설정 (Security & Config) ---
 # [CRITICAL] 보안 키 파일 및 로컬 환경변수 파일
