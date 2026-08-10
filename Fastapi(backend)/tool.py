@@ -1,4 +1,3 @@
-from google.genai import types
 from ultralytics import YOLO
 import hashlib
 import os
@@ -97,16 +96,7 @@ class CVLLM(LLM):
         # 5. Gemini 호출
         response = self.client.models.generate_content(
             model="gemini-3.6-flash",
-            contents=[
-                types.Part.from_bytes(
-                    data=final_image,
-                    mime_type='image/jpeg',
-                ),
-                f"Analyze if this lipstick is suitable for someone with a '{color_id}' personal color. Provide a detailed professional opinion in Korean."
-            ],
-            config={
-                "tools": [{"google_search": {}}],
-                "system_instruction": """You are an expert beauty analyst specializing in color science and personal color theory. 
+            system_instruction="""You are an expert beauty analyst specializing in color science and personal color theory. 
     Your task is to analyze the provided product image (lipstick) and determine its suitability for a specific personal color type.
 
     Guidelines:
@@ -114,10 +104,20 @@ class CVLLM(LLM):
     2. Harmony Evaluation: Compare the extracted color profile with the user's provided personal color type.
     3. Logical Reasoning: Explain why the color matches or clashes, considering undertones (warm/cool) and clarity (clear/muted).
     4. Professionalism: Maintain a sophisticated, helpful, and objective tone.
-    5. Language: Always provide the final response in Korean as per the user's primary language."""
-            }
+    5. Language: Always provide the final response in Korean as per the user's primary language.""",
+            input=[ 
+                {
+                    "type": "text", 
+                    "text":f"Analyze if this lipstick is suitable for someone with a '{color_id}' personal color. Provide a detailed professional opinion in Korean."
+                },
+                {
+                    "type": "image",
+                    "data": final_image,
+                    "mime_type": "image/jpeg"
+                }
+            ]
         )
-        result=self.rm_markdown(response.text)
+        result=self.rm_markdown(response.output_text)
         print(f"result is {result}")
         return result
 
@@ -151,18 +151,12 @@ class TextLLM(LLM):
         - **Reasoning**: Provide a logical explanation in Korean focusing on (1) personal color harmony, (2) skin suitability based on {sex} and {age}, and (3) situational appropriateness.
         """
 
-        result = self.client.models.generate_content(
+        result = self.client.interactions.create(
             model="gemini-3.6-flash",
-            contents=text,
-            config={
-                "tools": [{"google_search": {}}], # 실시간 검색 도구 활성화
-                "system_instruction": system_instruction
-            }
+            input=text,
+            system_instruction= system_instruction
         )
-        print("결과 : "+result.text)
-
-        print(dir(result))
-        return self.rm_markdown(result.text)
+        return self.rm_markdown(result.output_text)
 
 def SendEmail(email,subject,body):
     my_email = "an0jin0106@gmail.com"
