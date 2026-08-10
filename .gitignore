@@ -1,49 +1,49 @@
-# --- 가상환경 (Virtual Environments) ---
-# 가상환경의 실행 파일, 라이브러리, 헤더 파일을 제외합니다.
-# 로컬 개발 환경의 환경변수 및 패키지 설치 경로를 관리합니다.
-bin/
-include/
-lib/
-lib64/
-share/
-pyvenv.cfg
-.venv/
-venv/
-ENV/
-env/
-lib64/
+# 1. Ignore everything by default
+*
 
-# --- 파이썬 캐시 및 컴파일 파일 ---
+# 2. Allow directory traversal
+!*/
+
+# 3. Exclude virtual environments, build caches, environment variables, keys, and system files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.pytest_cache/
-.coverage
-htmlcov/
-lib
-
-# --- 보안 및 환경 설정 (Security & Config) ---
-# [CRITICAL] 보안 키 파일 및 로컬 환경변수 파일
-.env
-*.env
+.venv/
+venv/
+bin/
+lib/
+lib64/
+include/
+pyvenv.cfg
+capstone.key
 *.key
-*.pem
-cert.crt
-**/capstone.key
-
-# --- IDE 및 운영체제 관련 ---
-.vscode/
-.idea/
-*.swp
-*.swo
+.env
+.env.*
 .DS_Store
-Thumbs.db
+.idea/
+.vscode/
 
-# --- 주피터 노트북 체크포인트 ---
-.ipynb_checkpoints/
+# 4. Include allowed extensions
+!*.py
+!*.ipynb
+!*.sql
+!*.pt
+!*.onnx
+!*.txt
+!*.md
 
-# --- 임시파일 및 로그 ---
-*.log
-*.tmp
-val_batch*.jpg
+# 5. Include Docker-related files
+!Dockerfile
+!Dockerfile.*
+!dockerfile
+![Dd]ocker*
+!docker-compose*.yml
+!docker-compose*.yaml
+!.dockerignore
+
+# 6. Include Git-related files
+!.gitignore
+!.gitattributes
+!.github/
+!.github/**
