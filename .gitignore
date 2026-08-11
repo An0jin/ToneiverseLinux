@@ -31,6 +31,7 @@ capstone.key
 !*.pt
 !*.onnx
 !*.txt
+!*.csv
 !*.md
 
 # 5. Include Docker-related files
