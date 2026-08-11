@@ -56,13 +56,7 @@ def sync_processor(img_byte: bytes, token: str | None) -> dict:
     boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=640)[0].boxes
     if len(boxes) != 1:
         return {"color_id": "한사람만 테스트할수 있습니다" if len(boxes) > 1 else "얼굴을 찾을 수 없습니다", "hex_code": "", "cname": ""}
-
-    x1, y1, x2, y2 = map(int, boxes.xyxy[0])
-    face_crop = Image.fromarray(np.array(img_pil)[y1:y2, x1:x2])
-
-    with torch.no_grad():
-        color_id = CLASSES[pcolor_model(pcolor_transform(face_crop)[None]).argmax().item()]
-
+    color_id=boxes.cls[0]
     with connect() as conn:
         df = pd.read_sql('SELECT color_id, hex_code, cname FROM lipstick where color_id=%s', conn, params=(color_id,))
         res = df.to_dict(orient="records")[0] if len(df) > 0 else {"color_id": color_id, "hex_code": "", "cname": ""}
