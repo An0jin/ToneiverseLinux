@@ -1,38 +1,38 @@
 # 1. Ignore everything by default
 *
 
-# 2. Allow directory traversal
-!*/
+# 2. Allow all directories traversal (모든 깊이의 폴더 탐색 허용)
+!**/
 
-# 3. Exclude virtual environments, build caches, environment variables, keys, and system files
+# 3. Exclude virtual environments, build caches, and system directories
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.venv/
-venv/
-bin/
-lib/
-lib64/
-include/
+.venv/**
+venv/**
+bin/**
+lib/**
+lib64/**
+include/**
 pyvenv.cfg
 capstone.key
 *.key
 .env
 .env.*
 .DS_Store
-.idea/
-.vscode/
+.idea/**
+.vscode/**
 
-# 4. Include allowed extensions
-!*.py
-!*.ipynb
-!*.sql
-!*.pt
-!*.onnx
-!*.txt
-!*.csv
-!*.md
+# 4. Include allowed extensions across all directories (모든 하위 경로 포함)
+!**/*.py
+!**/*.ipynb
+!**/*.sql
+!**/*.pt
+!**/*.onnx
+!**/*.txt
+!**/*.csv
+!**/*.md
 
 # 5. Include Docker-related files
 !Dockerfile
@@ -46,5 +46,4 @@ capstone.key
 # 6. Include Git-related files
 !.gitignore
 !.gitattributes
-!.github/
 !.github/**
