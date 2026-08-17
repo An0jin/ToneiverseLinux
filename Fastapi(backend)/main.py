@@ -23,19 +23,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
-
-face_model = YOLO('face.pt')
-pcolor_model = torch.load('personal_color.pt', map_location='cpu')
-if hasattr(pcolor_model, 'eval'): pcolor_model.eval()
-
-with open('classes.txt', encoding='utf-8') as f:
-    CLASSES = [line.strip() for line in f if line.strip()]
-
-pcolor_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
+@app.on_event('startup')
+async def on_startup():    
+    
+    face_model = YOLO('face.pt')
+    pcolor_model = torch.load('personal_color.pt', map_location='cpu')
+    if hasattr(pcolor_model, 'eval'): pcolor_model.eval()
+    
+    with open('classes.txt', encoding='utf-8') as f:
+        CLASSES = [line.strip() for line in f if line.strip()]
+    
+    pcolor_transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
 @app.post('/login')
 async def login(login_data: Annotated[Login, Form()]) -> dict:
