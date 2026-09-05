@@ -5,15 +5,18 @@ from psycopg2.errors import UniqueViolation
 from model import Chat, User, Update, Lipstick
 from tool import connect, to_response, hashpw, JWT, SendEmail
 
+# APIRouter 초기화
 chat = APIRouter(tags=['chat'], prefix='/chat')
 user = APIRouter(tags=['user'], prefix='/user')
 
+# 회원가입 시 발송되는 환영 이메일 메시지
 WELCOME_MSG = """안녕하세요, Toniverse에 오신 것을 진심으로 환영합니다!
 당신만의 퍼스널컬러와 상황에 맞는 AI 기반 가상 메이크업 서비스를 경험해보세요.
 Toniverse 개발자 드림"""
 
 @user.get("/{token}")
 def get_user(token: Annotated[str, Path()]) -> dict:
+    """JWT 토큰을 검증하여 해당 사용자의 프로필 및 립스틱 정보 조회"""
     try:
         data = JWT.decode(token)
         with connect() as conn:
@@ -25,6 +28,7 @@ def get_user(token: Annotated[str, Path()]) -> dict:
 
 @chat.get("/{color}")
 def get_chat(color: Annotated[str, Path()]) -> dict:
+    """특정 퍼스널컬러 ID에 해당하는 채팅 기록 목록 조회"""
     try:
         with connect() as conn:
             df = pd.read_sql('select * from v_user_chat_lipstick where color_id=%s', conn, params=[color])
@@ -34,6 +38,7 @@ def get_chat(color: Annotated[str, Path()]) -> dict:
 
 @chat.post("")
 def post_chat(chat_data: Annotated[Chat, Form()]) -> dict | None:
+    """새로운 채팅 메시지를 데이터베이스에 저장"""
     try:
         data = JWT.decode(chat_data.token)
         with connect() as conn:
@@ -45,6 +50,7 @@ def post_chat(chat_data: Annotated[Chat, Form()]) -> dict | None:
 
 @user.post("")
 def post_user(user_data: Annotated[User, Form()]) -> dict:
+    """회원가입 처리 (비밀번호 해싱, 사용자 등록, 토큰 발급 및 환영 이메일 발송)"""
     try:
         email = user_data.email.lower()
         hashed_pw = hashpw(user_data.pw)
@@ -63,6 +69,7 @@ def post_user(user_data: Annotated[User, Form()]) -> dict:
 
 @user.put("")
 def put_user(update: Update) -> dict:
+    """사용자 정보 수정 (이름, 성별, 출생연도 및 선택적 비밀번호 변경)"""
     try:
         data = JWT.decode(update.token)
         email, pw = data['email'], data['pw']
@@ -81,6 +88,7 @@ def put_user(update: Update) -> dict:
 
 @user.put("/lipstick")
 def put_user_lipstick(lipstick: Lipstick) -> dict:
+    """사용자의 대표 립스틱 HEX 코드 업데이트"""
     try:
         data = JWT.decode(lipstick.token)
         with connect() as conn:
@@ -94,6 +102,7 @@ def put_user_lipstick(lipstick: Lipstick) -> dict:
 
 @user.delete("/{token}")
 def delete_user(token: Annotated[str, Path()]) -> dict:
+    """회원 탈퇴 처리 (관련 채팅 내역 및 사용자 계정 정보 삭제)"""
     try:
         data = JWT.decode(token)
         with connect() as conn:
@@ -104,4 +113,3 @@ def delete_user(token: Annotated[str, Path()]) -> dict:
                 return to_response("" if cursor.rowcount > 0 else "존재하지 않는 이메일입니다")
     except Exception as e:
         return to_response(str(e))
-

@@ -15,9 +15,12 @@ from router import chat, user
 from model import Login, Tllm, Email
 from tool import connect, to_response, hashpw, JWT, SendEmail, TextLLM, CVLLM
 
+# FastAPI 애플리케이션 생성
 app = FastAPI(
     docs_url=None, 
     redoc_url=None)
+
+# CORS 미들웨어 등록
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,9 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
 @app.on_event('startup')
 async def on_startup():    
-    
+    """서버 시작 시 AI 모델 및 전처리 파이프라인 초기화"""
     face_model = YOLO('face.pt')
     pcolor_model = torch.load('personal_color.pt', map_location='cpu')
     if hasattr(pcolor_model, 'eval'): pcolor_model.eval()
@@ -43,6 +47,7 @@ async def on_startup():
 
 @app.post('/login')
 async def login(login_data: Annotated[Login, Form()]) -> dict:
+    """사용자 로그인 처리 및 JWT 토큰 발급"""
     try:
         email, hashed = login_data.email.lower(), hashpw(login_data.pw)
         with connect() as conn:
@@ -56,6 +61,7 @@ async def login(login_data: Annotated[Login, Form()]) -> dict:
         return to_response(str(e))
 
 def sync_processor(img_byte: bytes, token: str | None) -> dict:
+    """얼굴 영역을 검출하고 퍼스널컬러에 맞는 대표 립스틱 정보 조회 및 사용자 정보 갱신"""
     img_pil = Image.open(BytesIO(img_byte)).convert('RGB')
     boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=640)[0].boxes
     if len(boxes) != 1:
@@ -72,6 +78,7 @@ def sync_processor(img_byte: bytes, token: str | None) -> dict:
 
 @app.post('/predict')
 async def predict_image(img: Annotated[UploadFile, File()], token: Annotated[str | None, Form()] = None) -> dict:
+    """얼굴 사진 업로드 및 퍼스널컬러 예측 엔드포인트"""
     try:
         img_byte = await img.read()
         return await run_in_threadpool(sync_processor, img_byte, token)
@@ -80,12 +87,14 @@ async def predict_image(img: Annotated[UploadFile, File()], token: Annotated[str
 
 @app.get('/lipstick/{color}')
 async def lipstick(color: Annotated[str, Path()]) -> dict:
+    """특정 퍼스널컬러 ID에 해당하는 립스틱 목록 조회"""
     with connect() as conn:
         df = pd.read_sql('select hex_code,cname from lipstick where color_id=%s', conn, params=[color])
     return to_response(df.to_dict(orient='records'))
 
 @app.post('/llm')
 async def llm_text(llm: Annotated[Tllm, Form()]) -> dict:
+    """사용자의 퍼스널컬러 후보군 내에서 텍스트 기반 맞춤 립스틱 추천 및 정보 업데이트"""
     data = JWT.decode(llm.token)
     email, pw = data['email'], data['pw']
     with connect() as conn:
@@ -107,18 +116,21 @@ async def llm_text(llm: Annotated[Tllm, Form()]) -> dict:
 
 @app.post('/cvllm')
 async def llm_cv(img: Annotated[UploadFile, File()], color_id: Annotated[str, Form()]) -> dict:
+    """업로드된 립스틱 이미지와 사용자의 퍼스널컬러 매칭 적합도 분석"""
     cv_llm = CVLLM()
     response = await cv_llm.invoke(color_id, img)
     return {"result": response}
 
 @app.get('/version/{version}')
 async def check_version(version: Annotated[int, Path()]) -> dict:
+    """클라이언트 앱 버전과 최신 서버 버전 일치 여부 확인"""
     with connect() as conn:
         df = pd.read_sql('select * from "version"', conn)
     return to_response(version == df['version'].values[0])
 
 @app.post('/email')
 async def get_pw(email: Annotated[Email, Form()]) -> dict:
+    """임시 비밀번호 생성 및 데이터베이스 업데이트 후 이메일 발송"""
     new_pw = os.urandom(32).hex()[:6]
     with connect() as conn:
         df = pd.read_sql('select * from "user" where email=%s', conn, params=[email.email])
@@ -132,13 +144,15 @@ async def get_pw(email: Annotated[Email, Form()]) -> dict:
 
 @app.post('/getNum')
 async def get_num(email: Annotated[str, Form()], num: Annotated[str, Form()]) -> dict:
+    """인증번호 이메일 발송"""
     SendEmail(email, 'Toniverse 인증번호', f"인증번호 : {num}")
     return to_response("메일을 확인해주세요")
 
 @app.exception_handler(404)
 def error_handler(request: Request, exc: HTTPException):
+    """404 Not Found 에러 핸들러"""
     return JSONResponse(content={"result": "잘못된 응답입니다"}, status_code=404)
 
+# 서브 라우터 등록
 app.include_router(chat)
 app.include_router(user)
-
