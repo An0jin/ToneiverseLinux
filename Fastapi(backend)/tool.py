@@ -68,12 +68,39 @@ class LLM(ABC):
 
     def rm_markdown(self, text: str) -> str:
         """마크다운 태그를 제거하고 순수 텍스트만 추출"""
-        return BeautifulSoup(markdown.markdown(text), 'html.parser').get_text()\
+        return BeautifulSoup(markdown.markdown(text), 'html.parser').get_text()
 
     @property
-    def text(self, content) -> str:
+    def text(self) -> str:
         """추출된 텍스트 프로퍼티"""
-        return content[0]['text']
+        return self.content[0]['text']
+
+class TextLLM(LLM):
+    """사용자 상황 및 퍼스널컬러 후보군에 따른 맞춤형 립스틱 추천 텍스트 LLM 클래스"""
+    def invoke(self, text: str, colors: list, year: int, sex: str) -> str:
+        """나이, 성별, 상황, 립스틱 컬러 목록 및 웹 검색 트렌드를 종합하여 최적의 컬러 추천"""
+        age = datetime.datetime.now().year - year + 1
+        system_instruction = f"""You are a highly professional beauty consultant for the 'Toneiverse' app.
+Recommend the best lipstick color from: {colors}.
+Biological Sex: {sex}, Age: {age}.
+Output Rules: Respond in Korean. First line MUST be HEX code (e.g. #FF5733). Provide logical explanation."""
+        
+        # 최신 트렌드 웹 검색 (검색 실패 시 빈 문자열 처리)
+        try:
+            search_result = self.search.run(f"best lipstick trend for {text}")
+        except Exception:
+            search_result = ""
+
+        # 사용자 요청 및 검색 참고 정보 구성
+        user_content = f"User Request: {text}\nReference Info:\n{search_result}" if search_result else text
+
+        # LLM 호출
+        self.content = self.llm.invoke([
+            SystemMessage(content=system_instruction),
+            HumanMessage(content=user_content)
+        ]).content
+        
+        return self.rm_markdown(self.text)
 
 class CVLLM(LLM):
     """립스틱 이미지 검출(YOLO) 및 퍼스널컬러 적합도 분석 비전 LLM 클래스"""
@@ -113,40 +140,13 @@ Always provide the final response in Korean."""),
                     ]
                 )
             ]
-        )
+        ).content
         return self.rm_markdown(self.text)
 
     async def invoke(self, color_id: str, images: UploadFile):
         """업로드된 이미지 파일을 읽고 비동기 스레드풀에서 cv_processor 실행"""
         img_byte = await images.read()
         return await run_in_threadpool(self.cv_processor, img_byte, color_id)
-
-class TextLLM(LLM):
-    """사용자 상황 및 퍼스널컬러 후보군에 따른 맞춤형 립스틱 추천 텍스트 LLM 클래스"""
-    def invoke(self, text: str, colors: list, year: int, sex: str) -> str:
-        """나이, 성별, 상황, 립스틱 컬러 목록 및 웹 검색 트렌드를 종합하여 최적의 컬러 추천"""
-        age = datetime.datetime.now().year - year + 1
-        system_instruction = f"""You are a highly professional beauty consultant for the 'Toneiverse' app.
-Recommend the best lipstick color from: {colors}.
-Biological Sex: {sex}, Age: {age}.
-Output Rules: Respond in Korean. First line MUST be HEX code (e.g. #FF5733). Provide logical explanation."""
-        
-        # 최신 트렌드 웹 검색 (검색 실패 시 빈 문자열 처리)
-        try:
-            search_result = self.search.run(f"best lipstick trend for {text}")
-        except Exception:
-            search_result = ""
-
-        # 사용자 요청 및 검색 참고 정보 구성
-        user_content = f"User Request: {text}\nReference Info:\n{search_result}" if search_result else text
-
-        # LLM 호출
-        self.content = self.llm.invoke([
-            SystemMessage(content=system_instruction),
-            HumanMessage(content=user_content)
-        ])
-        
-        return self.rm_markdown(self.text)
 
 def SendEmail(email: str, subject: str, body: str):
     """Gmail SMTP를 통해 사용자에게 안내 이메일 발송"""
