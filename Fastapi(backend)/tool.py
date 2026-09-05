@@ -10,7 +10,10 @@ from ultralytics import YOLO
 from fastapi import UploadFile
 from starlette.concurrency import run_in_threadpool
 from email.mime.text import MIMEText
-from google import genai
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
+import base64
 
 load_dotenv()
 
@@ -48,13 +51,19 @@ class JWT:
 
 class LLM(ABC):
     def __init__(self):
-        self.client = genai.Client(api_key=os.getenv("gemini"))
+        api_key = os.getenv("gemini")
+        self.llm = ChatGoogleGenerativeAI(model="gemini-3.5-flash-lite", google_api_key=api_key)
+        self.search = DuckDuckGoSearchRun()
+        self.content:AIMessage
 
     @abstractmethod
     def invoke(self, *args, **kwargs): pass
 
     def rm_markdown(self, text: str) -> str:
-        return BeautifulSoup(markdown.markdown(text), 'html.parser').get_text()
+        return BeautifulSoup(markdown.markdown(text), 'html.parser').get_text()\
+    @property
+    def text(self,content)->str:
+        return content[0]['text']
 
 class CVLLM(LLM):
     def __init__(self):
@@ -75,18 +84,21 @@ class CVLLM(LLM):
         is_success, buffer = cv2.imencode(".jpg", crop)
         if not is_success:
             return "이미지 처리 중 오류가 발생했습니다."
-
-        response = self.client.models.generate_content(
-            model="gemini-3.6-flash",
-            system_instruction="""You are an expert beauty analyst specializing in color science and personal color theory.
+        self.content=self.llm.invoke(
+            [
+                SystemMessage(content="""You are an expert beauty analyst specializing in color science and personal color theory.
 Analyze the provided product image (lipstick) and determine its suitability for a specific personal color type.
-Always provide the final response in Korean.""",
-            input=[
-                {"type": "text", "text": f"Analyze if this lipstick is suitable for someone with a '{color_id}' personal color. Provide a detailed professional opinion in Korean."},
-                {"type": "image", "data": BytesIO(buffer).getvalue(), "mime_type": "image/jpeg"}
+Always provide the final response in Korean.""")
+                ,
+                HumanMessage(
+                    content=[
+                        {"type":"text","text":f"Analyze if this lipstick is suitable for someone with a '{color_id}' personal color. Provide a detailed professional opinion in Korean."},
+                        {"type": "image", "image_url": {"url": f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"}}
+                    ]
+                )
             ]
         )
-        return self.rm_markdown(response.output_text)
+        return self.rm_markdown(self.text)
 
     async def invoke(self, color_id: str, images: UploadFile):
         img_byte = await images.read()
@@ -99,13 +111,11 @@ class TextLLM(LLM):
 Recommend the best lipstick color from: {colors}.
 Biological Sex: {sex}, Age: {age}.
 Output Rules: Respond in Korean. First line MUST be HEX code (e.g. #FF5733). Provide logical explanation."""
-
-        result = self.client.interactions.create(
-            model="gemini-3.6-flash",
-            input=text,
-            system_instruction=system_instruction
+        self.content=self.llm.invoke(
+            [SystemMessage(content=system_instruction),
+            HumanMessage(content=text)]
         )
-        return self.rm_markdown(result.output_text)
+        return self.rm_markdown(self.text)
 
 def SendEmail(email: str, subject: str, body: str):
     my_email, my_pw = "an0jin0106@gmail.com", os.getenv("stmplibpw")

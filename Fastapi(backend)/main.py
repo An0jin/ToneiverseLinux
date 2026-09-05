@@ -15,7 +15,9 @@ from router import chat, user
 from model import Login, Tllm, Email
 from tool import connect, to_response, hashpw, JWT, SendEmail, TextLLM, CVLLM
 
-app = FastAPI(docs_url=None, redoc_url=None)
+app = FastAPI(
+    docs_url=None, 
+    redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
