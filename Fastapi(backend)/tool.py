@@ -121,7 +121,7 @@ class LLM(ABC):
         return self._agent
 
     @agent.setter
-    def agent(self, instructions: str):
+    async def agent(self, instructions: str):
         """
         지정된 시스템 지침(instructions)과 DuckDuckGo 웹 검색 역량을 가진 Agent를 구성합니다.
         
@@ -157,7 +157,7 @@ class TextLLM(LLM):
     def __init__(self):
         super().__init__()
 
-    def invoke(self, text: str, colors: list, year: int, sex: str) -> str:
+    async def invoke(self, text: str, colors: list, year: int, sex: str) -> str:
         """
         사용자의 나이, 성별, 요청 상황 및 추천 대상 립스틱 컬러 목록을 종합 분석하여
         최적의 립스틱 HEX 코드 및 추천 사유를 반환합니다.
@@ -182,7 +182,7 @@ Biological Sex: {sex}, Age: {age}.
 Output Rules: Respond in Korean. First line MUST be HEX code (e.g. #FF5733). Provide logical explanation."""
 
         # LLM 에이전트 동기 호출 (필요시 내장된 DuckDuckGo 웹 검색 수행)
-        self._content = self._agent.run_sync([f"User Request: {text}"])
+        self._content = await self.agent.run([f"User Request: {text}"])
         
         return self.rm_markdown(self.text)
 
@@ -199,7 +199,7 @@ class CVLLM(LLM):
 Analyze the provided product image (lipstick) and determine its suitability for a specific personal color type.
 Always provide the final response in Korean."""
 
-    def cv_processor(self, img_byte: bytes, color_id: str) -> str:
+    async def cv_processor(self, img_byte: bytes, color_id: str) -> str:
         """
         [동기 작업 함수] 이미지 바이트에서 립스틱을 검출 및 크롭하고, 
         멀티모달 Gemini 모델에 전달하여 퍼스널컬러와의 어울림을 분석합니다.
@@ -232,7 +232,7 @@ Always provide the final response in Korean."""
             return "이미지 처리 중 오류가 발생했습니다."
 
         # 멀티모달 Gemini 호출: run_sync를 사용하여 동기식으로 응답 수신 (buffer.tobytes() 바이트열 변환)
-        self._content = self._agent.run_sync(
+        self._content = await self.agent.run(
             [
                 f"Analyze if this lipstick is suitable for someone with a '{color_id}' personal color. Provide a detailed professional opinion in Korean.",
                 BinaryContent(data=buffer.tobytes(), media_type='image/jpeg')
