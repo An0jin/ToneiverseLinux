@@ -15,6 +15,7 @@ from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.capabilities import WebSearch
 from pydantic_ai.run import AgentRunResult
+from model import TextLLMRequest
 
 # .env 환경 변수 로드
 load_dotenv()
@@ -111,7 +112,7 @@ class LLM(ABC):
         self._content: AgentRunResult = None
 
     @abstractmethod
-    def invoke(self, *args, **kwargs):
+    async def invoke(self, *args, **kwargs):
         """하위 클래스에서 각 비즈니스 로직에 맞게 구현해야 할 실행 추상 인터페이스"""
         pass
 
@@ -121,18 +122,15 @@ class LLM(ABC):
         return self._agent
 
     @agent.setter
-    async def agent(self, instructions: str):
+    @abstractmethod
+    def agent(self, instructions: str):
         """
-        지정된 시스템 지침(instructions)과 DuckDuckGo 웹 검색 역량을 가진 Agent를 구성합니다.
+        하위 클래스별 목적에 맞는 Agent를 구성하기 위한 추상 setter 메서드
         
         Args:
             instructions (str): 에이전트에 부여할 페르소나 및 응답 규칙
         """
-        self._agent = Agent(
-            self._model,
-            capabilities=[WebSearch(native=False, local='duckduckgo')],
-            instructions=instructions
-        )
+        pass
 
     def rm_markdown(self, text: str) -> str:
         """
@@ -146,9 +144,10 @@ class LLM(ABC):
         return BeautifulSoup(markdown.markdown(text), 'html.parser').get_text()
 
     @property
+    @abstractmethod
     def text(self) -> str:
-        """Agent 실행 결과(AgentRunResult)에서 최종 출력 텍스트를 안전하게 반환"""
-        return self._content.output if self._content else ""
+        """Agent 실행 결과(AgentRunResult)에서 최종 출력 텍스트를 반환하는 추상 프로퍼티"""
+        pass
 
 
 class TextLLM(LLM):
@@ -157,20 +156,53 @@ class TextLLM(LLM):
     def __init__(self):
         super().__init__()
 
+    @property
+    def agent(self) -> Agent:
+        """현재 설정된 Pydantic AI Agent 객체 반환"""
+        return self._agent
+
+    @agent.setter
+    def agent(self, instructions: str):
+        """
+        TextLLMRequest 스키마 기반 구조화된 출력(Output) 및 DuckDuckGo 검색 기능을 갖춘 Agent를 구성합니다.
+        
+        Args:
+            instructions (str): 에이전트에 부여할 페르소나 및 시스템 지침
+        """
+        self._agent = Agent(
+            self._model,
+            output_type=TextLLMRequest,
+            capabilities=[WebSearch(native=False, local='duckduckgo')],
+            instructions=instructions
+        )
+
+    @property
+    def text(self) -> str:
+        """TextLLMRequest 결과에서 립스틱 추천 사유 텍스트를 안전하게 반환"""
+        if not self._content or not hasattr(self._content, "output"):
+            return ""
+        return str(self._content.output.text)
+
+    @property
+    def hexcode(self) -> str:
+        """TextLLMRequest 결과에서 추천된 립스틱 색상의 HEX 코드를 안전하게 반환"""
+        if not self._content or not hasattr(self._content, "output"):
+            return ""
+        return str(self._content.output.hex_code)
+
     async def invoke(self, text: str, colors: list, year: int, sex: str) -> str:
         """
         사용자의 나이, 성별, 요청 상황 및 추천 대상 립스틱 컬러 목록을 종합 분석하여
-        최적의 립스틱 HEX 코드 및 추천 사유를 반환합니다.
-        
-        주의: main.py 라우터에서 동기(sync) 방식으로 호출되므로 run_sync를 사용하여 동기 실행합니다.
+        최적의 립스틱 추천 사유 텍스트를 반환합니다.
+        (선택된 HEX 코드는 self.hexcode 프로퍼티를 통해 조회 가능)
         
         Args:
-            text (str): 사용자 질의 또는 상황 설명
+            text (str): 사용자 질의 또는 요청 상황 설명
             colors (list): 추천 후보군 립스틱 HEX 코드 리스트
             year (int): 사용자 출생 연도
             sex (str): 사용자 성별
         Returns:
-            str: 첫 줄에 HEX 코드, 이어서 추천 근거가 포함된 한글 텍스트
+            str: 마크다운이 제거된 추천 사유 한글 텍스트
         """
         # 현재 연도 기준 한국식 나이 계산
         age = datetime.datetime.now().year - year + 1
@@ -179,11 +211,10 @@ class TextLLM(LLM):
         self.agent = f"""You are a highly professional beauty consultant for the 'Toneiverse' app.
 Recommend the best lipstick color from: {colors}.
 Biological Sex: {sex}, Age: {age}.
-Output Rules: Respond in Korean. First line MUST be HEX code (e.g. #FF5733). Provide logical explanation."""
+Select the most suitable color from the candidates and explain the reason thoroughly in Korean."""
 
-        # LLM 에이전트 동기 호출 (필요시 내장된 DuckDuckGo 웹 검색 수행)
+        # LLM 에이전트 비동기 호출 (TextLLMRequest 구조로 결과 반환)
         self._content = await self.agent.run([f"User Request: {text}"])
-        
         return self.rm_markdown(self.text)
 
 
@@ -198,6 +229,33 @@ class CVLLM(LLM):
         self.agent = """You are an expert beauty analyst specializing in color science and personal color theory.
 Analyze the provided product image (lipstick) and determine its suitability for a specific personal color type.
 Always provide the final response in Korean."""
+
+    @property
+    def agent(self) -> Agent:
+        """현재 설정된 Pydantic AI Agent 객체 반환"""
+        return self._agent
+
+    @agent.setter
+    def agent(self, instructions: str):
+        """
+        비전 분석을 위한 기본 텍스트 응답 기반 Agent를 구성합니다.
+        
+        Args:
+            instructions (str): 에이전트에 부여할 페르소나 및 시스템 지침
+        """
+        self._agent = Agent(
+            self._model,
+            capabilities=[WebSearch(native=False, local='duckduckgo')],
+            instructions=instructions
+        )
+
+    @property
+    def text(self) -> str:
+        """Agent 실행 결과(AgentRunResult)에서 최종 비전 분석 결과 텍스트를 안전하게 반환"""
+        if not self._content or not hasattr(self._content, "output"):
+            return ""
+        return str(self._content.output)
+        
 
     async def cv_processor(self, img_byte: bytes, color_id: str) -> str:
         """
@@ -252,7 +310,7 @@ Always provide the final response in Korean."""
             str: 분석 결과 한글 텍스트
         """
         img_byte = await images.read()
-        return await run_in_threadpool(self.cv_processor, img_byte, color_id)
+        return await self.cv_processor(img_byte, color_id)
 
 
 def SendEmail(email: str, subject: str, body: str):

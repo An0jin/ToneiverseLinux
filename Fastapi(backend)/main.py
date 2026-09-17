@@ -2,7 +2,7 @@ import os, re
 from io import BytesIO
 from typing import Annotated
 from PIL import Image
-import pandas as pd, numpy as np
+import pandas as pd
 import torch
 from torchvision import transforms
 from fastapi import FastAPI, UploadFile, HTTPException, Request, Form, File, Path
@@ -105,8 +105,8 @@ async def llm_text(llm: Annotated[Tllm, Form()]) -> dict:
                 WHERE T0.email = %s and T0.pw=%s
             )''', conn, params=[email, pw])['hex_code'])
         text_llm = TextLLM()
-        response = text_llm.invoke(llm.msg, colors, sex=llm.sex, year=llm.year)
-        color = re.findall(r"#[A-Fa-f\d]{6}", response)[0]
+        response = await text_llm.invoke(llm.msg, colors, sex=llm.sex, year=llm.year)
+        color = text_llm.hexcode
         with conn.cursor() as cursor:
             cursor.execute('update "user" set hex_code=%s where email=%s and pw=%s', (color, email, pw))
             conn.commit()

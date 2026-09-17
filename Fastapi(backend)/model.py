@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 
 class Chat(BaseModel):
     """채팅 메시지 전송 모델"""
@@ -42,3 +42,8 @@ class Lipstick(BaseModel):
 class Email(BaseModel):
     """비밀번호 초기화 이메일 요청 모델"""
     email: str
+
+class TextLLMRequest(BaseModel):
+    hex_code :str =Field(description="색상 HEX 코드",example="#FF0000")
+    text:str = Field(description="해당 색상을 고른이유",example="립스틱 추천해줘")
+    
