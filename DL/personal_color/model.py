@@ -10,6 +10,8 @@ from typing import List
 import torch
 import torch.nn as nn
 import timm
+import torchvision
+from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
 class Model(nn.Module):
@@ -62,6 +64,13 @@ class Model(nn.Module):
         for param in self.model.get_classifier().parameters():
             param.requires_grad = True
 
+        # 4. 입력 이미지 표준화 정규화 (Normalization) 레이어 등록
+        #    - timm 사전학습 모델의 입력 기대 분포에 맞춰 ImageNet 통계치(RGB 평균 및 표준편차)로 텐서 정규화
+        self.normalize = torchvision.transforms.Normalize(
+            mean=IMAGENET_DEFAULT_MEAN,
+            std=IMAGENET_DEFAULT_STD
+        )
+
     @property
     def classifier(self) -> nn.Module:
         """
@@ -105,5 +114,6 @@ class Model(nn.Module):
                  학습 시 `CrossEntropyLoss`로 직접 전달되어 손실을 계산하고,
                  추론 시 `torch.argmax(outputs, dim=1)`로 최적의 클래스를 예측합니다.
         """
+        x = self.normalize(x)
         return self.model(x)
 
