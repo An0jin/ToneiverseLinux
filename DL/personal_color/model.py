@@ -114,6 +114,8 @@ class Model(nn.Module):
                  학습 시 `CrossEntropyLoss`로 직접 전달되어 손실을 계산하고,
                  추론 시 `torch.argmax(outputs, dim=1)`로 최적의 클래스를 예측합니다.
         """
+        # 백본 모델 통과 전 ImageNet 기준 분포로 텐서 정규화
         x = self.normalize(x)
+        # 백본의 특성 추출 및 미세조정된 분류기(Classifier)를 거쳐 클래스별 로짓(Logits) 반환
         return self.model(x)
 
