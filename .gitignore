@@ -33,7 +33,8 @@ capstone.key
 !*.txt
 !*.csv
 !*.md
-
+!*.jpg
+!*.png
 # 5. Include Docker-related files
 !Dockerfile
 !Dockerfile.*
