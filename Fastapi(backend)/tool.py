@@ -281,7 +281,7 @@ Always provide the final response in Korean."""
             return "립스틱 하나만 찍힌 사진을 업로드해주세요."
 
         # 검출된 첫 번째 립스틱 영역 좌표 크롭 (OpenCV BGR 포맷 변환)
-        crop = img_pil.crop(results.boxes[0].xyxy[0])
+        crop = img_pil.crop(results.boxes[0].xyxy[0].tolist())
         # 크롭된 영역을 JPEG 바이너리로 인코딩
         buffer=BytesIO()
         crop.save(buffer, format='JPEG')
