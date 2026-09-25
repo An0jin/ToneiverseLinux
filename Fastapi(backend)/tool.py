@@ -1,7 +1,7 @@
 import hashlib, os, smtplib, datetime
 from io import BytesIO
 from abc import ABC, abstractmethod
-import pandas as pd, numpy as np, cv2, markdown, psycopg2
+import pandas as pd, numpy as np, markdown, psycopg2
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from PIL import Image
@@ -281,19 +281,16 @@ Always provide the final response in Korean."""
             return "립스틱 하나만 찍힌 사진을 업로드해주세요."
 
         # 검출된 첫 번째 립스틱 영역 좌표 크롭 (OpenCV BGR 포맷 변환)
-        x1, y1, x2, y2 = map(int, results.boxes[0].xyxy[0])
-        crop = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)[y1:y2, x1:x2]
-
+        crop = img_pil.crop(results.boxes[0].xyxy[0])
         # 크롭된 영역을 JPEG 바이너리로 인코딩
-        is_success, buffer = cv2.imencode(".jpg", crop)
-        if not is_success:
-            return "이미지 처리 중 오류가 발생했습니다."
+        buffer=BytesIO()
+        crop.save(buffer, format='JPEG')
 
-        # 멀티모달 Gemini 호출: run_sync를 사용하여 동기식으로 응답 수신 (buffer.tobytes() 바이트열 변환)
+        # 멀티모달 Gemini 호출: run_sync를 사용하여 동기식으로 응답 수신 (buffer.getvalue() 바이트열 변환)
         self._content = await self.agent.run(
             [
                 f"Analyze if this lipstick is suitable for someone with a '{color_id}' personal color. Provide a detailed professional opinion in Korean.",
-                BinaryContent(data=buffer.tobytes(), media_type='image/jpeg')
+                BinaryContent(data=buffer.getvalue(), media_type='image/jpeg')
             ]
         )
         return self.rm_markdown(self.text)

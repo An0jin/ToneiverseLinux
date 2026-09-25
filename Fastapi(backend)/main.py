@@ -1,16 +1,16 @@
+import numpy as np
 import os, re
 from io import BytesIO
 from typing import Annotated
 from PIL import Image
 import pandas as pd
-import torch
+import onnxruntime as ort
 from torchvision import transforms
 from fastapi import FastAPI, UploadFile, HTTPException, Request, Form, File, Path
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 from ultralytics import YOLO
-
 from router import chat, user
 from model import Login, Tllm, Email
 from tool import connect, to_response, hashpw, JWT, SendEmail, TextLLM, CVLLM
@@ -32,17 +32,14 @@ app.add_middleware(
 @app.on_event('startup')
 async def on_startup():    
     """서버 시작 시 AI 모델 및 전처리 파이프라인 초기화"""
+    global face_model, pcolor_model, CLASSES, pcolor_transform
     face_model = YOLO('face.pt')
-    pcolor_model = torch.load('personal_color.pt', map_location='cpu')
-    if hasattr(pcolor_model, 'eval'): pcolor_model.eval()
-    
+    pcolor_model = ort.InferenceSession('personal_color.onnx')
     with open('classes.txt', encoding='utf-8') as f:
         CLASSES = [line.strip() for line in f if line.strip()]
-    
     pcolor_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.Resize(pcolor_model.get_inputs()[0].shape[2:]),
+        transforms.ToTensor()
     ])
 
 @app.post('/login')
@@ -63,10 +60,17 @@ async def login(login_data: Annotated[Login, Form()]) -> dict:
 def sync_processor(img_byte: bytes, token: str | None) -> dict:
     """얼굴 영역을 검출하고 퍼스널컬러에 맞는 대표 립스틱 정보 조회 및 사용자 정보 갱신"""
     img_pil = Image.open(BytesIO(img_byte)).convert('RGB')
-    boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=640)[0].boxes
+    boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=512)[0].boxes
     if len(boxes) != 1:
         return {"color_id": "한사람만 테스트할수 있습니다" if len(boxes) > 1 else "얼굴을 찾을 수 없습니다", "hex_code": "", "cname": ""}
-    color_id=boxes.cls[0]
+    crop=boxes[0].xyxy[0].tolist()
+    img_crop=img_pil.crop(crop)
+    x=np.array(img_crop,dtype=np.float32)/255.0
+    x=np.transpose(x,(2,0,1))
+    x=np.expand_dims(x, axis=0)
+    result = pcolor_model.run(None, {pcolor_model.get_inputs()[0].name: x})
+    color_id = CLASSES[result[0].argmax()]
+    
     with connect() as conn:
         df = pd.read_sql('SELECT color_id, hex_code, cname FROM lipstick where color_id=%s', conn, params=(color_id,))
         res = df.to_dict(orient="records")[0] if len(df) > 0 else {"color_id": color_id, "hex_code": "", "cname": ""}
