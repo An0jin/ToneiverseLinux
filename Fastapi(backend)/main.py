@@ -33,7 +33,7 @@ app.add_middleware(
 async def on_startup():    
     """서버 시작 시 AI 모델 및 전처리 파이프라인 초기화"""
     global face_model, pcolor_model, CLASSES, pcolor_transform
-    face_model = YOLO('face.pt')
+    face_model = YOLO('face.onnx')
     pcolor_model = ort.InferenceSession('personal_color.onnx')
     with open('classes.txt', encoding='utf-8') as f:
         CLASSES = [line.strip() for line in f if line.strip()]
