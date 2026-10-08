@@ -59,7 +59,9 @@ async def login(login_data: Annotated[Login, Form()]) -> dict:
 
 def sync_processor(img_byte: bytes, token: str | None) -> dict:
     """얼굴 영역을 검출하고 퍼스널컬러에 맞는 대표 립스틱 정보 조회 및 사용자 정보 갱신"""
+    print("sync_processor진입")
     img_pil = Image.open(BytesIO(img_byte)).convert('RGB')
+    print("이미지 오픈")
     boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=512)[0].boxes
     if len(boxes) != 1:
         return {"color_id": "한사람만 테스트할수 있습니다" if len(boxes) > 1 else "얼굴을 찾을 수 없습니다", "hex_code": "", "cname": ""}
@@ -85,6 +87,7 @@ async def predict_image(img: Annotated[UploadFile, File()], token: Annotated[str
     """얼굴 사진 업로드 및 퍼스널컬러 예측 엔드포인트"""
     try:
         img_byte = await img.read()
+        print("이미지 읽기 완료")
         return await run_in_threadpool(sync_processor, img_byte, token)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
