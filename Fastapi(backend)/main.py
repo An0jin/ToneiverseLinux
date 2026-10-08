@@ -60,27 +60,33 @@ async def login(login_data: Annotated[Login, Form()]) -> dict:
 def sync_processor(img_byte: bytes, token: str | None) -> dict:
     """얼굴 영역을 검출하고 퍼스널컬러에 맞는 대표 립스틱 정보 조회 및 사용자 정보 갱신"""
     print("sync_processor진입")
-    img_pil = Image.open(BytesIO(img_byte)).convert('RGB')
-    print("이미지 오픈")
-    boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=512)[0].boxes
-    if len(boxes) != 1:
-        return {"color_id": "한사람만 테스트할수 있습니다" if len(boxes) > 1 else "얼굴을 찾을 수 없습니다", "hex_code": "", "cname": ""}
-    crop=boxes[0].xyxy[0].tolist()
-    img_crop=img_pil.crop(crop)
-    x=np.array(img_crop,dtype=np.float32)/255.0
-    x=np.transpose(x,(2,0,1))
-    x=np.expand_dims(x, axis=0)
-    result = pcolor_model.run(None, {pcolor_model.get_inputs()[0].name: x})
-    color_id = CLASSES[result[0].argmax()]
-    
-    with connect() as conn:
-        df = pd.read_sql('SELECT color_id, hex_code, cname FROM lipstick where color_id=%s', conn, params=(color_id,))
-        res = df.to_dict(orient="records")[0] if len(df) > 0 else {"color_id": color_id, "hex_code": "", "cname": ""}
-        if token and (data := JWT.decode(token)):
-            with conn.cursor() as cur:
-                cur.execute('UPDATE "user" SET hex_code=%s WHERE email=%s and pw=%s', (res['hex_code'], data['email'], data['pw']))
-                conn.commit()
-    return res
+    try:
+        img_pil = Image.open(BytesIO(img_byte)).convert('RGB')
+        print("이미지 오픈")
+        boxes = face_model.predict(img_pil, iou=0.1, agnostic_nms=True, imgsz=512)[0].boxes
+        if len(boxes) != 1:
+            return {"color_id": "한사람만 테스트할수 있습니다" if len(boxes) > 1 else "얼굴을 찾을 수 없습니다", "hex_code": "", "cname": ""}
+        crop=boxes[0].xyxy[0].tolist()
+        img_crop=img_pil.crop(crop).resize((224,224))
+        x=np.array(img_crop,dtype=np.float32)/255.0
+        x=np.transpose(x,(2,0,1))
+        x=np.expand_dims(x, axis=0)
+        print(f"x : {x}")
+        result = pcolor_model.run(None, {pcolor_model.get_inputs()[0].name: x})
+        color_id = CLASSES[result[0].argmax()]
+        print(f"퍼스널 컬러 : {color_id}")
+        
+        with connect() as conn:
+            df = pd.read_sql('SELECT color_id, hex_code, cname FROM lipstick where color_id=%s', conn, params=(color_id,))
+            res = df.to_dict(orient="records")[0] if len(df) > 0 else {"color_id": color_id, "hex_code": "", "cname": ""}
+            if token and (data := JWT.decode(token)):
+                with conn.cursor() as cur:
+                    cur.execute('UPDATE "user" SET hex_code=%s WHERE email=%s and pw=%s', (res['hex_code'], data['email'], data['pw']))
+                    conn.commit()
+        return res
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/predict')
 async def predict_image(img: Annotated[UploadFile, File()], token: Annotated[str | None, Form()] = None) -> dict:
