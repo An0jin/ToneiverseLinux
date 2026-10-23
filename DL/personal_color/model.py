@@ -10,7 +10,7 @@ from typing import List
 import torch
 import torch.nn as nn
 import timm
-import torchvision
+from torchvision.transforms.v2 import Normalize
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
@@ -66,7 +66,7 @@ class Model(nn.Module):
 
         # 4. 입력 이미지 표준화 정규화 (Normalization) 레이어 등록
         #    - timm 사전학습 모델의 입력 기대 분포에 맞춰 ImageNet 통계치(RGB 평균 및 표준편차)로 텐서 정규화
-        self.normalize = torchvision.transforms.Normalize(
+        self.normalize = Normalize(
             mean=IMAGENET_DEFAULT_MEAN,
             std=IMAGENET_DEFAULT_STD
         )
